@@ -1131,6 +1131,9 @@ class EventCommitRange:
         return list(filter(lambda x: x[0] not in ignore_commits, scores))
 
     def __eq__(x, y):
+        if isinstance(y, EventCommitRange) == False:
+            return False
+
         if x.is_single_commit() and y.is_single_commit():
             return x.new == y.new
         else:
