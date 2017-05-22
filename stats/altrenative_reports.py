@@ -1174,7 +1174,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 "events.html": lambda x: self.list_events(),
                 "result": lambda x: self.event_result(x), 
                 "commits.html": lambda x: "commits!!",
-                "trends.html": lambda x: "trends!",
+                "trends.html": lambda x: self.trend_page(x),
                 "detail.html": lambda x: "detail",
                 "tests.html": lambda x: "tests", 
                 "image": lambda x: self.give_image(x), 
