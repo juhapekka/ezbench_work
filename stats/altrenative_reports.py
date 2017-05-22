@@ -1176,8 +1176,9 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 "commits.html": lambda x: "commits!!",
                 "trends.html": lambda x: self.trend_page(x),
                 "detail.html": lambda x: "detail",
-                "tests.html": lambda x: "tests", 
+                "tests.html": lambda x: self.tests_page(),
                 "image": lambda x: self.give_image(x), 
+                "testlist":  lambda x: self.testlist(x),
                 "hello.html" : lambda x: "hello!!!"
             }[os.path.basename(self.path.split("_")[0])](os.path.basename(self.path.replace("%20", " ")))
         except Exception as e:
