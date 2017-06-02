@@ -111,9 +111,9 @@ head, body, html {
 	<table width="100%">
 	  <tr>
 	  <td width="20%" class="tdwrapper" onclick="clicky('events')"><h2>Events</h2></td>
-	  <td width="20%" class="tdwrapper" onclick="clicky('commits')"><h2>Commits</h2></td>
+<!---	  <td width="20%" class="tdwrapper" onclick="clicky('commits')"><h2>Commits</h2></td> --->
 	  <td width="20%" class="tdwrapper" onclick="clicky('trends')"><h2>Trends</h2></td>
-	  <td width="20%" class="tdwrapper" onclick="clicky('detail')"><h2>Detail</h2></td>
+<!---	  <td width="20%" class="tdwrapper" onclick="clicky('detail')"><h2>Detail</h2></td> --->
 	  <td width="20%" class="tdwrapper" onclick="clicky('tests')"><h2>Tests</h2></td>
 	  </tr>  
 	</table>
