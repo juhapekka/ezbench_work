@@ -55,6 +55,7 @@ global_html = None
 global_log_folder = None
 
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
+    served_htmls_dict = {}
     #######################
     ## all tests page
     #######################
@@ -1161,31 +1162,36 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         return_html = None
         response_code = 200
         
-#        print((os.path.basename(self.path.replace("%20", " "))))
-
-        ###
-        # Everything that will be served is coming through this list, if it's not in the list its 404.
-        #
-        try:
-            return_html = {
-                "": lambda x: global_html,
-                "/": lambda x: global_html,
-                "index.html": lambda x: global_html,
-                "events.html": lambda x: self.list_events(),
-                "result": lambda x: self.event_result(x), 
-                "commits.html": lambda x: "commits!!",
-                "trends.html": lambda x: self.trend_page(x),
-                "detail.html": lambda x: "detail",
-                "tests.html": lambda x: self.tests_page(),
-                "image": lambda x: self.give_image(x), 
-                "testlist":  lambda x: self.testlist(x),
-                "hello.html" : lambda x: "hello!!!"
-            }[os.path.basename(self.path.split("_")[0])](os.path.basename(self.path.replace("%20", " ")))
-        except Exception as e:
-            print(e)
-            traceback.print_exc()
-            self.send_error(404, 'File Not Found: %s' % self.path)
-            return
+        #small scale caching of results here.
+        if os.path.basename(self.path.replace("%20", " ")) in self.served_htmls_dict:
+            return_html = self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]
+        else:
+            ###
+            # Everything that will be served is coming through this list, if it's not in the list its 404.
+            #
+            try:
+                chooser = os.path.basename(self.path.split("_")[0])
+                listed = ["result", "trends.html", "events.html" ]
+                return_html = {
+                    "": lambda x: global_html,
+                    "/": lambda x: global_html,
+                    "index.html": lambda x: global_html,
+                    "events.html": lambda x: self.list_events(),
+                    "result": lambda x: self.event_result(x),
+                    "commits.html": lambda x: "commits!!",
+                    "trends.html": lambda x: self.trend_page(x),
+                    "detail.html": lambda x: "detail",
+                    "tests.html": lambda x: self.tests_page(),
+                    "image": lambda x: self.give_image(x),
+                    "testlist":  lambda x: self.testlist(x),
+                }[chooser](os.path.basename(self.path.replace("%20", " ")))
+                if chooser in listed:
+                    self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))] = return_html
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
+                self.send_error(404, 'File Not Found: %s' % self.path)
+                return
 
         self.send_response(response_code)
         # Send headers, we serve out only two type of content out from here.
