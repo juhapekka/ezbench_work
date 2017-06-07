@@ -37,6 +37,7 @@ import re
 import traceback
 import html
 import difflib
+import gzip
 
 # Import ezbench from the utils/ folder
 ezbench_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -55,7 +56,11 @@ global_html = None
 global_log_folder = None
 
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
+    ##
+    ## this dict contain cached html pages.
+    ##
     served_htmls_dict = {}
+
     #######################
     ## all tests page
     #######################
@@ -247,6 +252,10 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         return returnstr
 
     def onetest(self, testname):
+        if str("test_"+testname) in self.served_htmls_dict:
+            print ("SERVED! ")
+            return self.served_htmls_dict[str("test_"+testname)]
+
         returnStr = "       <h2>{}</h2><br>".format(testname)
 
         for key in global_db.db["envs"][testname].keys():
@@ -256,6 +265,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
 
         returnStr += self.env_detail(testname)
         returnStr += self.test_result(testname)
+        self.served_htmls_dict[str("test_"+testname)] = returnStr
         return returnStr
 
     def testlist(self, testlist):
@@ -1164,7 +1174,17 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         
         #small scale caching of results here.
         if os.path.basename(self.path.replace("%20", " ")) in self.served_htmls_dict:
-            return_html = self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]
+            if 'accept-encoding' in self.headers and 'gzip' in self.headers['accept-encoding']:
+                return_html = self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]
+                self.send_response(response_code)
+                self.send_header('Content-type','text/html')
+                self.send_header('content-encoding', 'gzip')
+                self.send_header('content-length', len(return_html))
+                self.end_headers()
+                self.wfile.write(return_html)
+                return
+            else:
+                return_html = str(gzip.decompress(self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]),'utf-8')
         else:
             ###
             # Everything that will be served is coming through this list, if it's not in the list its 404.
@@ -1186,7 +1206,9 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                     "testlist":  lambda x: self.testlist(x),
                 }[chooser](os.path.basename(self.path.replace("%20", " ")))
                 if chooser in listed:
-                    self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))] = return_html
+                    # store generated html into our list for later use.
+                    # compress it here, first time access for page will not be sent out as compressed
+                    self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))] = gzip.compress(bytes(return_html, 'utf-8'))
             except Exception as e:
                 print(e)
                 traceback.print_exc()
