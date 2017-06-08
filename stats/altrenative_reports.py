@@ -27,22 +27,16 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-
 import collections
 import sys
 import os
-import htmlReportMain
 import argparse
-import re
 import traceback
-import html
 import gzip
-
-import altrenative_reports_events
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # Import ezbench from the utils/ folder
 ezbench_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 sys.path.append(os.path.join(ezbench_dir, 'python-modules'))
 sys.path.append(ezbench_dir)
 
@@ -50,582 +44,16 @@ from utils.env_dump.env_dump_parser import *
 from ezbench.smartezbench import *
 from ezbench.report import *
 
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import htmlReportMain
+import altrenative_reports_events
+import altrenative_reports_trend
+import altrenative_reports_tests
 
 global_db = None
 global_html = None
 global_log_folder = None
 
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
-    ##
-    ## this dict contain cached html pages.
-    ## here pages are stored in gzipped format.
-    served_htmls_dict = {}
-
-    #######################
-    ## all tests page
-    #######################
-    def test_result(self, testname):
-        returnstr = ""
-
-        unit_results = []
-        stats_status = dict()
-        statuses = set()
-
-        target_changes = dict()
-        changes = set()
-
-        # Add the target report in the list of reports if it
-        # contains tests for this test
-        target_result = None
-        if 'target_result' in global_db.db and testname in global_db.db['target_result']:
-            subtests = global_db.db['target_result'][testname].results(BenchSubTestType.SUBTEST_STRING)
-            if len(subtests) > 0:
-                target_result = global_db.db['target_result'][testname]
-                target_result.name = "Target"
-                stats_status[target_result.name] = dict()
-                unit_results.append(target_result)
-
-        for report in global_db.db['reports']:
-            for commit in report.commits:
-                for result in commit.results.values():
-                    if result.test.full_name != testname:
-                        continue
-                    if result.test_type != "unit":
-                        continue
-                    result.name = "{}.{}".format(report.name, commit.label)
-                    stats_status[result.name] = dict()
-                    target_changes[result.name] = dict()
-                    unit_results.append(result)
-
-        all_tests = set()
-        for result in unit_results:
-            all_tests |= set(result.results(BenchSubTestType.SUBTEST_STRING))
-            result.unit_results = dict()
-
-        unit_tests = set()
-        for test in all_tests:
-            value = None
-            for result in unit_results:
-                if "<" in test: # Hide subsubtests
-                    continue
-                subtest = result.result(test)
-                if subtest is None or len(subtest) == 0:
-                    status = "missing"
-                else:
-                    if len(subtest.to_set()) == 1:
-                        status = subtest[0]
-                    else:
-                        status = "unstable"
-                result.unit_results[test] = status
-
-                # Collect stats on all the status
-                if status not in stats_status[result.name]:
-                    stats_status[result.name][status] = 0
-                    statuses |= set([status])
-                stats_status[result.name][status] += 1
-
-                if value == None and status != "missing":
-                    value = status
-                    continue
-                if value != status and status != "missing":
-                    unit_tests |= set([test])
-
-                if (target_result is None or result == target_result or
-                    target_result.unit_results[test] == status):
-                    continue
-
-                change = "{} -> {}".format(target_result.unit_results[test],
-                                           status)
-                if change not in target_changes[result.name]:
-                    target_changes[result.name][change] = 0
-                    changes |= set([change])
-                target_changes[result.name][change] += 1
-
-        all_tests = []
-
-        if len(unit_results) > 0:
-            returnstr += "<h4>Unit tests</h4>"
-            returnstr += "<h5>Basic stats</h5>"
-            returnstr += "<table style=\"font-family:arial;font-size: 8pt;border-collapse: collapse;\">"
-            returnstr += "<tr style=\"border: 1px solid black\"><th>Version</th>"
-
-            for status in sorted(statuses):
-                returnstr += "<th style=\"border: 1px solid black\">{}</th>".format(status)
-            returnstr += "</tr>"
-
-            for result in stats_status:
-                returnstr += "<tr style=\"border: 1px solid black\"><td style=\"border: 1px solid black\">{}</td>".format(result)
-                for status in sorted(statuses):
-                    if status in stats_status[result]:
-                        returnstr += "<td style=\"border: 1px solid black\">{}</td>".format(stats_status[result][status])
-                    else:
-                        returnstr += "<td style=\"border: 1px solid black\">0</td>"
-                returnstr += "</tr>"
-            returnstr += "</table>"
-
-            if 'target_result' in global_db.db and testname in global_db.db['target_result']:
-                returnstr += "<h5>Status changes</h5>"
-                returnstr += "<table style=\"font-family:arial;font-size: 8pt;border-collapse: collapse;\">"
-                returnstr += "<tr><th>Version</th>"
-
-                for result in target_changes:
-                    returnstr += "<th>{}</th>".format(result)
-
-                returnstr += "</tr>"
-
-                for change in sorted(changes):
-                    returnstr += "<tr style=\"border: 1px solid black\"><td style=\"border: 1px solid black\">{}</td>".format(change)
-                    for result in target_changes:
-                        if change in target_changes[result]:
-                            returnstr += "<td style=\"border: 1px solid black\">{}</td>".format(target_changes[result][change])
-                        else:
-                            returnstr += "<td style=\"border: 1px solid black\">0</td>"
-                    returnstr += "</tr>"
-                returnstr += "</table>"
-
-                returnstr += "<h5>Changes</h5>"
-                returnstr += "<div style='overflow:auto; width:100%;max-height:1000px;'>"
-                returnstr += "<table style=\"font-family:arial;font-size: 8pt;border-collapse: collapse;\">"
-                returnstr += "<tr style=\"border: 1px solid black\"><th style=\"border: 1px solid black\">test name ({})</th>".format(len(unit_tests))
-
-                for result in unit_results:
-                    returnstr += "<th style=\"border: 1px solid black\">{}</th>".format(result.name)
-                returnstr += "</tr>"
-
-                for test in sorted(unit_tests):
-                    returnstr += "<tr style=\"border: 1px solid black\"><td style=\"border: 1px solid black\">{}</td>", format(html.escape(test))
-                    for result in unit_results:
-                        returnstr += "<td style=\"border: 1px solid black\">{}</td>".format(result.unit_results[test])
-                    returnstr += "</tr>"
-                returnstr += "</table>"
-                returnstr += "</div>"
-        return returnstr
-
-    def env_detail(self, testname):
-        returnstr = """
-        <div class="row"">
-            <input id="togList{}" type="checkbox">
-            <label for="togList{}">
-                <span style="font-family:arial;font-size: 12pt;background:#CCCCFF;"><b>+</b>Expand Environment detail:</span>
-                <span style="font-family:arial;font-size: 12pt;background:#CCCCFF;"><b>-</b>Collapse Environment detail:</span>
-            </label>
-            <div class="list">
-            <ul>
-            <table style="font-family:arial;font-size: 8pt;border-collapse: collapse;">
-"""
-
-        returnstr = returnstr.format(testname,  testname)
-        returnstr += "\n            <tr style=\"border: 1px solid black\">"
-        returnstr += "\n            <th style=\"border: 1px solid black\">Key</th>"
-
-        for env_set in  global_db.db["env_sets"][testname]:
-            users = ""
-            for user in env_set['users']:
-                if len(users) > 0:
-                    users += "<br/>"
-                users += "{}.{}#{}".format(user['log_folder'], user['commit'].label, user['run'])
-            returnstr += "\n            <th style=\"border: 1px solid black\">{}</th>".format(users)
-
-        for key in global_db.db["env_diff_keys"][testname]:
-            returnstr += "\n            <tr style=\"border: 1px solid black\">"
-            returnstr += "\n                <td style=\"border: 1px solid black\">{}</td>".format(key)
-            prev = None
-            for env_set in global_db.db["env_sets"][testname]:
-                if key in dict(env_set['set']):
-                    env_val = dict(env_set['set'])[key]
-                else:
-                    env_val = "MISSING"
-                if prev is None or env_val != prev:
-                    css_class = "background:#FFCCCC;border: 1px solid black"
-                else:
-                    css_class = "background:#EEEEEE;border: 1px solid black"
-                prev = env_val
-                returnstr += "\n                <td style=\"{}\">{}</td>".format(css_class, env_val)
-            returnstr += "\n            </tr>"
-
-        returnstr += """
-            </table>
-            </ul>
-            </div>
-        </div>
-"""
-        return returnstr
-
-    def onetest(self, testname):
-        if str("test_"+testname) in self.served_htmls_dict:
-            print ("SERVED! ")
-            return self.served_htmls_dict[str("test_"+testname)]
-
-        returnStr = "       <h2>{}</h2><br>".format(testname)
-
-        for key in global_db.db["envs"][testname].keys():
-            returnStr += "       <h4>{}</h4><br>".format(key)
-            for i in sorted(global_db.db["envs"][testname][key]):
-                returnStr += "{}  ".format(i)
-
-        returnStr += self.env_detail(testname)
-        returnStr += self.test_result(testname)
-        self.served_htmls_dict[str("test_"+testname)] = returnStr
-        return returnStr
-
-    def testlist(self, testlist):
-        return_stringi = """    <div class=\"output\" id="testsmainsdiv">
-"""
-        return_stringi_footer = """    </div>
-"""
-
-        newlist = re.split('\?', testlist)
-        newlist.remove("testlist_")
-        newlist.remove(".html")
-        print(newlist)
-        outputdiv = ""
-        for test in newlist:
-            outputdiv += self.onetest(test)
-
-        return return_stringi+outputdiv+return_stringi_footer
-
-
-    def tests_page(self):
-        return_stringi = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-    <style type="text/css">
-        body {
-            height:auto;
-            width:100vw;
-            max-height:100vh;
-            overflow: scroll;
-        }
-
-        dummy { padding-left: 4em; }
-        tab1 { margin-left: 2em; }
-        tab2 { margin-left: 10%; position:inherit }
-        tab3 { margin-left: 20%; position:inherit }
-
-        .selections {
-            border-radius: 8px;
-            background: #EEEEEE;
-            width: 20vw;
-            padding: 10px;
-            border: 2px solid #FFFFFF;
-        }
-
-        .output {
-            display:table;
-            height: auto;
-            overflow: scroll;
-            border-radius: 8px;
-            background: #EEEEEE;
-            padding: 10px;
-            border: 2px solid #FFFFFF;
-
-            position: absolute;
-            top: 8px;
-            left: calc(20vw + 32px);
-            width: calc(80vw - 64px);
-        }
-
-        [id^="togList"],
-        [id^="togList"] ~ .list,
-        [id^="togList"] + label  span + span,
-        [id^="togList"]:checked + label span{ display:none; }
-        [id^="togList"]:checked + label span + span{ display:inline-block; }
-        [id^="togList"]:checked ~ .list{ display:block; }
-    </style>
-</head>
-<body>
-"""
-        return_stringi_footer = """    </div>
-</body>
-<script type="text/javascript">
-    var elements = [{}];
-    function checkClick(parameetteri) {{
-        var testlist = ""
-        for (var c = 0; c < elements.length; c++) {{
-            if (document.getElementById(elements[c]).checked == true) {{
-                testlist += "?" + elements[c];
-            }}
-        }}
-
-        var elem = document.getElementById("testsmainsdiv");
-        if(elem != null) {{
-            elem.parentNode.removeChild(elem);
-        }}
-
-        var client = new XMLHttpRequest();
-        var ll = "testlist_"+testlist+"?.html"
-        client.open('GET', ll);
-        client.onreadystatechange = function() {{
-            if (this.readyState === 4 && this.status === 200) {{
-                document.getElementById("testsoutput").insertAdjacentHTML('afterbegin', client.responseText);
-            }}
-        }}
-        client.send();
-    }}
-</script>
-</html>"""
-
-#        reportsdiv = "<div class=\"selections\">"
-#        for report in global_db.db["reports"]:
-#            reportsdiv += "<input type=\"checkbox\" id=\"{}\" onClick=\"checkClick(\'{}\')\" checked>{}</input>".format(str(report.name), str(report.name), str(report.name))
-#            reportsdiv += "<br>"
-#        reportsdiv += "</div>"
-
-        testssdiv = "<div id=\"selections\"class=\"selections\">"
-        commachar = ""
-        elements = ""
-        for test in global_db.db["tests"]:
-            testssdiv += "<input type=\"checkbox\" id=\"{}\" onClick=\"checkClick(\'{}\')\">{}</input>".format(test, test, test)
-            testssdiv += "<br>"
-            elements += "{}\"{}\"".format(commachar,  test)
-            commachar = ", "
-        testssdiv += "</div>"
-
-        outputdiv = "<div id=\"testsoutput\"></div>"
-        return return_stringi+testssdiv+outputdiv+return_stringi_footer.format(elements)
-
-    #######################
-    ## trend page
-    #######################
-    def test_color_code(self,  testname):
-        return int(sum(bytearray(testname, 'ascii'))*12345.12345%0xffffff)
-
-    def one_test(self,  testname):
-        return "\n\t\t\t\t<input type=\"checkbox\" onClick=\"checkClick()\" " \
-            "id=\"{}\" checked><span style=\"color:#{:06X};\">&#9608;</span>" \
-            " {} <br>".format(testname, self.test_color_code(testname), \
-            testname)
-
-    def decorate_trendgroup(self,  testname, group, elementindexes):
-        return "\n\t\t<div style=\"display: inline-block; width: 32vw\">" \
-            "\n\t\t\t<fieldset><legend><input type=\"checkbox\" id=\"{}\" " \
-            "onClick=\"checkClick(\'{}\', {})\" checked>{}</input></legend>{}" \
-            "\n\t\t\t</fieldset>\n\t\t</div>".format(testname, testname, \
-            elementindexes, testname, group)
-
-    def trend_page(self, eventpath):
-        return_stringi = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-    <style type="text/css">
-        body {
-            height:auto;
-            width:100vw;
-            max-height:100vh;
-            overflow-x: hidden;
-            overflow-y: scroll;
-        }
-
-        dummy { padding-left: 4em; }
-        tab1 { margin-left: 2em; }
-        tab2 { margin-left: 10%; position:inherit }
-        tab3 { margin-left: 20%; position:inherit }
-
-        .trenddiv {
-            display: inline-block;
-            overflow-y: hidden;
-            overflow-x: hidden;
-            height: 45vh;
-            width: 97%;
-            border: 0px;
-            z-index: 100;
-        }
-
-        fieldset {
-            -webkit-border-radius: 8px;
-            -moz-border-radius: 8px;
-            border-radius: 8px;
-        }
-
-        legend {
-            background: #FF9;
-            border: solid 1px black;
-            -webkit-border-radius: 8px;
-            -moz-border-radius: 8px;
-            border-radius: 8px;
-            padding: 6px;
-        }
-            </style>
-</head>
-<body>
-    <div id="trends" class="trenddiv"></div>
-"""
-        return_stringi_footer = """
-<script type="text/javascript">
-    parent.parent.google.charts.setOnLoadCallback(drawLineColors);
-
-    var data;
-    var chart;
-
-    function drawLineColors() {{
-{}
-
-        var Options = {{
-            legend: 'none',
-            hAxis: {{ textPosition: 'in' }},
-            vAxis: {{ title: '% of target', textPosition: 'in' }},
-            chartArea: {{ left: "5%", right: "2%", bottom: "1%", top: "1%" }},
-            pointSize: 7,
-            dataOpacity: 0.3,
-            interpolateNulls: 'true',
-            series: {{{}
-            }}
-        }};
-    
-        chart = new parent.parent.google.visualization.LineChart(document.getElementById('trends'));
-        chart.draw(data, Options);
-    }}
-    function checkClick() {{
-        var elements = [{}];
-
-        var lOptions = {{
-            legend: 'none',
-            hAxis: {{ textPosition: 'in' }},
-            vAxis: {{ title: '% of target', textPosition: 'in' }},
-            chartArea: {{ left: "5%", right: "2%", bottom: "1%", top: "1%" }},
-            pointSize: 7,
-            dataOpacity: 0.3,
-            interpolateNulls: 'true',
-            series: {{{}
-            }}
-        }};
-
-        if (arguments.length > 0) {{
-            var chk = document.getElementById(arguments[0]).checked;
-            for (var i = 1; i < arguments.length; i++ ) {{
-                document.getElementById(elements[arguments[i]]).checked = chk;
-            }}
-        }}
-
-        var view = new parent.parent.google.visualization.DataView(data);
-        for (var c = 0, c2 = 0; c < elements.length; c++, c2++) {{
-            if (document.getElementById(elements[c]).checked == false) {{
-                    view.hideColumns([1+c*2]);
-                    view.hideColumns([2+c*2]);
-                    c2--;
-            }}
-            else {{
-                lOptions.series[c2] = lOptions.series[c];
-            }}
-        }}
-        chart.draw(view, lOptions);
-    }}
-    </script>
-</body>
-</html>"""
-
-        commits = global_db.db["commits"]
-        commitlist = list()
-
-        # create list with all commit dates/times
-        for single in commits:
-            commitlist.append(commits[single]["commit"].commit_date)
-
-        commitlist.sort()
-
-        report = global_db.db["reports"][0].name
-        testDict = {}
-        for test in global_db.db["tests"]:
-            #dictionary of tuples, [test] = (date, result)
-            testDict[test] = []
-
-            for commit in global_db.db["commits"]:
-                if test in global_db.db["commits"][commit]["reports"][report]:
-                    result = global_db.db["commits"][commit]["reports"][report][test]
-                    testDict[test].append((result.commit.commit_date, \
-                    result.diff_target ))
-
-        googleArrayData =  "\t\tdata = parent.parent.google.visualization.arrayToDataTable ([['DateTime', "
-        commachar = ""
-        prevResultDict = {}
-        for key in testDict:
-            prevResultDict[key] = "null"
-
-        colorlist = ""
-        onetimers = ["", ""]
-        grouppingString = ["", ""]
-        singleString = [0,  ""]
-        elementlist = ""
-        counter = 0
-        for test in sorted(testDict.keys()):
-            # elementlist is javascript var elements, list to check for checkmarks
-            elementlist += "{}\"{}\"".format(commachar,  test)
-            googleArrayData += "{}'{}', {{'type': 'string', 'role': 'style'}}".format(commachar, test)
-            # color list actually is list of the series. if new fields needed per series add them to format line below.
-            colorlist += "{}\n\t\t\t\t{}: {{ lineDashStyle: [1,0], color: '#{:06X}'}}".format(commachar,  counter, self.test_color_code(test) )
-
-            splitted = test.split(':', 1)
-
-            if singleString[0] == 0:
-                singleString[1] = splitted[0]
-                singleString[0] += 1
-                grouppingString[0] += self.one_test(test)
-                grouppingString[1] += "{}".format(str(counter))
-            else:
-                if singleString[1] == splitted[0]:
-                    singleString[0] += 1
-                    grouppingString[0] += self.one_test(test)
-                    grouppingString[1] += ", {}".format(str(counter))
-                else:
-                    if singleString[0] is 1:
-                        onetimers[0] += grouppingString[0]
-                        if len(onetimers[1]) > 0:
-                            onetimers[1] += ", "
-                        onetimers[1] += grouppingString[1]
-                        grouppingString[0] = self.one_test(test)
-                        grouppingString[1] = "{}".format(str(counter))
-                        singleString = [1,  splitted[0]]
-                    else:
-                        return_stringi += self.decorate_trendgroup(singleString[1], grouppingString[0],  grouppingString[1])
-                        grouppingString = ["", ""]
-                        singleString = [1,  splitted[0]]
-                        grouppingString[0] += self.one_test(test)
-                        grouppingString[1] += "{}".format(str(counter))
-
-            commachar = ", "
-            counter += 1
-
-        googleArrayData += "],\n"
-
-        if singleString[0] == 1:
-            onetimers[0] += grouppingString[0]
-            onetimers[1] += ", {}".format(grouppingString[1])
-        else:
-            return_stringi += self.decorate_trendgroup(singleString[1], grouppingString[0], grouppingString[1])
-
-        return_stringi += self.decorate_trendgroup("Single Tests",  onetimers[0],  onetimers[1])
-
-        indicecomma = ""
-        for item in commitlist:
-            googleArrayData += "{}\t\t\t[{}, ".format(indicecomma, item.strftime('new Date(%Y, %m, %d, %H, %M, %S)'))
-            commachar = ""
-            extrastr = "null"
-            for test in sorted(testDict.keys()):
-                res2 = "'line { stroke-width: 1;}'"
-                res = "null"
-                for i in testDict[test]:
-                    if i[0] == item:
-                        res = str(i[1])
-                        extrastr = prevResultDict[test]
-                        res2 = "null"
-                        break
-                googleArrayData += "{}{}, {}".format(commachar,  str(res), extrastr)
-                prevResultDict[test] = res2
-                commachar = ", "
-            googleArrayData += "]"
-            indicecomma = ",\n"
-        googleArrayData += "]);"
-
-        return_stringi += "\n\t</div>"
-        return_stringi += return_stringi_footer.format(googleArrayData, colorlist, elementlist, colorlist)
-        return return_stringi
-
-        
     #######################
     ## return image
     #######################
@@ -649,9 +77,9 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         response_code = 200
         
         #small scale caching of results here.
-        if os.path.basename(self.path.replace("%20", " ")) in self.served_htmls_dict:
+        if os.path.basename(self.path.replace("%20", " ")) in global_db.served_htmls_dict:
             if 'accept-encoding' in self.headers and 'gzip' in self.headers['accept-encoding']:
-                return_html = self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]
+                return_html = global_db.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]
                 self.send_response(response_code)
                 self.send_header('Content-type','text/html')
                 self.send_header('content-encoding', 'gzip')
@@ -660,7 +88,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(return_html)
                 return
             else:
-                return_html = str(gzip.decompress(self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]),'utf-8')
+                return_html = str(gzip.decompress(global_db.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))]),'utf-8')
         else:
             ###
             # Everything that will be served is coming through this list, if it's not in the list its 404.
@@ -675,16 +103,16 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                     "events.html": lambda x: altrenative_reports_events.list_events(global_db),
                     "result": lambda x: altrenative_reports_events.event_result(global_db, x),
                     "commits.html": lambda x: "commits!!",
-                    "trends.html": lambda x: self.trend_page(x),
+                    "trends.html": lambda x: altrenative_reports_trend.trend_page(global_db, x),
                     "detail.html": lambda x: "detail",
-                    "tests.html": lambda x: self.tests_page(),
+                    "tests.html": lambda x: altrenative_reports_tests.tests_page(global_db),
                     "image": lambda x: self.give_image(x),
-                    "testlist":  lambda x: self.testlist(x),
+                    "testlist":  lambda x: altrenative_reports_tests.testlist(global_db, x),
                 }[chooser](os.path.basename(self.path.replace("%20", " ")))
                 if chooser in listed:
                     # store generated html into our list for later use.
                     # compress it here, first time access for page will not be sent out as compressed
-                    self.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))] = gzip.compress(bytes(return_html, 'utf-8'))
+                    global_db.served_htmls_dict[os.path.basename(self.path.replace("%20", " "))] = gzip.compress(bytes(return_html, 'utf-8'))
             except Exception as e:
                 print(e)
                 traceback.print_exc()
@@ -705,6 +133,11 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         return
 
 class dbclass:
+    ##
+    ## this dict contain cached html pages.
+    ## here pages are stored in gzipped format.
+    served_htmls_dict = {}
+
     def __env_add_result__(self, db, human_envs, report, commit, result):
         if result.test.full_name not in human_envs:
             for run in result.runs:
