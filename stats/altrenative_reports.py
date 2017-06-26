@@ -34,6 +34,7 @@ import argparse
 import traceback
 import gzip
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
 
 # Import ezbench from the utils/ folder
 ezbench_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -48,9 +49,9 @@ import htmlReportMain
 import altrenative_reports_events
 import altrenative_reports_trend
 import altrenative_reports_tests
+import altrenative_reports_singleevent
 
 global_db = None
-global_html = None
 global_log_folder = None
 
 class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
@@ -76,6 +77,24 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         return_html = None
         response_code = 200
         
+        # db is being recreated.
+        if global_db == None:
+            waitpage = """<html>
+    <head>
+        <title>Report is being regenerated, please wait a moment..</title>
+        <meta http-equiv="refresh" content="5" />
+    </head>
+    <body>
+        <h1>Report is being regenerated, please wait a moment..</h1>
+    </body>
+</html>"""
+            self.send_response(response_code)
+            self.send_header('Content-type','text/html')
+            self.end_headers()
+            self.wfile.write(bytes(waitpage, "utf8"))
+            return
+            
+        
         #small scale caching of results here.
         if os.path.basename(self.path.replace("%20", " ")) in global_db.served_htmls_dict:
             if 'accept-encoding' in self.headers and 'gzip' in self.headers['accept-encoding']:
@@ -97,10 +116,11 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
                 chooser = os.path.basename(self.path.split("_")[0])
                 listed = ["result", "trends.html", "events.html" ]
                 return_html = {
-                    "": lambda x: global_html,
-                    "/": lambda x: global_html,
-                    "index.html": lambda x: global_html,
+                    "": lambda x: global_db.global_html,
+                    "/": lambda x: global_db.global_html,
+                    "index.html": lambda x: global_db.global_html,
                     "events.html": lambda x: altrenative_reports_events.list_events(global_db),
+                    "singleevent": lambda x: altrenative_reports_singleevent.eventpage(global_db, x),
                     "result": lambda x: altrenative_reports_events.event_result(global_db, x),
                     "commits.html": lambda x: "commits!!",
                     "trends.html": lambda x: altrenative_reports_trend.trend_page(global_db, x),
@@ -129,7 +149,6 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type','text/html')
             self.end_headers()
             self.wfile.write(bytes(return_html, "utf8"))
-            
         return
 
 class dbclass:
@@ -137,6 +156,11 @@ class dbclass:
     ## this dict contain cached html pages.
     ## here pages are stored in gzipped format.
     served_htmls_dict = {}
+
+    ##
+    ## main html to show
+    global_html = None
+
 
     def __env_add_result__(self, db, human_envs, report, commit, result):
         if result.test.full_name not in human_envs:
@@ -366,6 +390,7 @@ def gen_report(log_folder, restrict_commits):
     return report
 
 def gen_mainHTML(dbcontainer,  title):
+    global global_db
     html = None
 	# Check that we have commits
     if len(dbcontainer.db["commits"]) == 0 and verbose:
@@ -373,21 +398,43 @@ def gen_mainHTML(dbcontainer,  title):
     else:
         # Create the html file
         if title is None:
-            report_names = [r.name for r in reports]
+            report_names = [r.name for r in dbcontainer.db["reports"]]
             title = "Performance report on the runs named '{run_name}'".format(run_name=report_names)
 
         html = htmlReportMain.stubSource
 
     return html
+    
+def prepare_db(args):
+    global global_db
+    
+    # Restrict the report to this list of commits
+    restrict_commits = []
+    if args.restrict_commits is not None:
+        restrict_commits = args.restrict_commits.split(' ')
 
-"""
-start everything:
-"""
+    reports = []
+    for log_folder in set(args.log_folder):
+        reports.append(gen_report(log_folder, restrict_commits))
+
+    # Reference report
+    reference = None
+    if args.reference is not None:
+        reference = gen_report(args.reference, [])
+
+    local_db = dbclass(reports, args.output, args.unit, args.title,
+			   args.commit_url, not args.quiet, reference, args.reference_commit)
+
+    local_db.global_html = gen_mainHTML(local_db,  args.title)
+    
+    global_db = local_db
+    return 
+
+##
+## start everything:
+##
 
 if __name__ == "__main__":
-#    global global_db
-#    global global_html
-
     # parse the options
     parser = argparse.ArgumentParser()
     parser.add_argument("--title", help="Set the title for the report")
@@ -411,25 +458,11 @@ if __name__ == "__main__":
             print("Error: The output html file has to be specified when comparing multiple reports!")
             sys.exit(1)
 
-    # Restrict the report to this list of commits
-    restrict_commits = []
-    if args.restrict_commits is not None:
-        restrict_commits = args.restrict_commits.split(' ')
+    # do generation of report in its own thread and if someone's asking somethime over http
+    # we'll tell them we're not quite there yet but soon..
+    dbthread = Thread(target=prepare_db, args=(args,))
+    dbthread.start()
 
-    reports = []
-    for log_folder in set(args.log_folder):
-        reports.append(gen_report(log_folder, restrict_commits))
-
-    # Reference report
-    reference = None
-    if args.reference is not None:
-        reference = gen_report(args.reference, [])
-
-    global_db = dbclass(reports, args.output, args.unit, args.title,
-			   args.commit_url, not args.quiet, reference, args.reference_commit)
-
-    global_html = gen_mainHTML(global_db,  args.title)
-    
     try:
         server_port = int(args.port)
     except:

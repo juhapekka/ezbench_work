@@ -106,8 +106,7 @@ def event_result(global_db, eventpath):
             height: auto;
             width: auto;
         }
-        
-        
+
         .testonelinerparagraph:hover .tooltipchart {
             visibility: visible;
             display: inline-block;
@@ -161,6 +160,11 @@ def event_result(global_db, eventpath):
         [id^="togList"]:checked + label span + span{ display:inline-block; }
         [id^="togList"]:checked ~ .list{ display:block; }
         </style>
+        
+			<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+			<script type="text/javascript">
+				google.charts.load('current', {'packages':['corechart', 'table']});
+			</script>        
         </head>
         <body>
         """
@@ -174,7 +178,7 @@ def event_result(global_db, eventpath):
             {
                 if (elem1[0] > elem2[0]) return 1;
                 if (elem1[0] < elem2[0]) return -1;
-                return 0;                
+                return 0;
             }
 
             function drawchart()
@@ -203,14 +207,14 @@ def event_result(global_db, eventpath):
                 data.addColumn('number', '\% of target');
 
                 originaldata = [{}];
-                originaldata.sort(datesort);                
+                originaldata.sort(datesort);
                 data.addRows(originaldata);
 
                 chart = new parent.parent.google.visualization.LineChart(document.getElementById("{}"));
                 chart.draw(data, options);"""
 
     graph_builder_finish = """
-            }            
+            }
         </script>
 </html>
 """
@@ -266,6 +270,18 @@ def event_result(global_db, eventpath):
                             lista = testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)]
                             lista.append("[{}, {}]".format(str(result.commit.commit_date.strftime('new Date(%Y, %m, %d, %H, %M, %S)')),  str(result.diff_target)))
                             testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)] = lista
+            if test == "variance":
+                print("variance")
+            if test == "unit test":
+                for commit in global_db.db["commits"]:
+                    if testname in global_db.db["commits"][commit]["reports"][report]:
+                        result = global_db.db["commits"][commit]["reports"][report][str(testname)]
+                        if re.sub('[^0-9a-zA-Z]+', '_', testname) not in testdict:
+                            testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)] = ["[{}, {}]".format(str(result.commit.commit_date.strftime('new Date(%Y, %m, %d, %H, %M, %S)')),  str(result.diff_target))]
+                        else:
+                            lista = testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)]
+                            lista.append("[{}, {}]".format(str(result.commit.commit_date.strftime('new Date(%Y, %m, %d, %H, %M, %S)')),  str(result.diff_target)))
+                            testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)] = lista
 
             if len(teststring) > 0:
                 assstring = "s"
@@ -284,7 +300,7 @@ def event_result(global_db, eventpath):
             datestr = datestr+commastr
             commastr = ", "
             datestr = datestr+item
-        
+
         return_string_footer = return_string_footer+graph_builder.format(datestr, key)
     return_string_footer = return_string_footer+graph_builder_finish
 
@@ -294,68 +310,101 @@ def event_result(global_db, eventpath):
         return_string += "\t\t\t<h2>{}</h2>\n".format(str(test))
         for testname in events[interesting_event][test]:
             return_string += "\t\t\t\t<h4>{}</h4>\n".format(str(testname))
+            
 ####################################
-            temp_return_string = tableformat.format(testname,  testname)
-            temp_return_string += "\n            <tr style=\"border: 1px solid black\">"
-            temp_return_string += "\n            <th style=\"border: 1px solid black\">Key</th>"
-            change_counter = 0
 
-            try:
-                for env_set in global_db.db["env_sets"][testname]:
-                    users = ""
-                    for user in env_set['users']:
-                        if user['commit'].label == interesting_event.old.label or user['commit'].label == interesting_event.new.label:
-                            if len(users) > 0:
-                                users += "<br/>"
-
-                            users += "{}.{}#{}".format(user['log_folder'], user['commit'].label, user['run'])
-                            temp_return_string += "\n            <th style=\"border: 1px solid black\">{}</th>".format(users)
-
-                for key in global_db.db["env_diff_keys"][testname]:
-                    temp_return_string2 = "\n            <tr style=\"border: 1px solid black\">"
-                    temp_return_string2 += "\n                <td style=\"border: 1px solid black\">{}</td>".format(key)
-                    temp_vals = []
-                    for env_set in global_db.db["env_sets"][testname]:
-                        for user in env_set['users']:
-                            if user['commit'].label == interesting_event.old.label or user['commit'].label == interesting_event.new.label:
-                                if key in dict(env_set['set']):
-                                    env_val = dict(env_set['set'])[key]
-                                else:
-                                    env_val = "MISSING"
-                                temp_vals.append(str(env_val))
-
-                    if len(temp_vals) == 2 and temp_vals[0] != temp_vals[1]:
-                        temp_return_string2 += "\n                <td style=\"border: 1px solid black\">{}</td>".format(diff_html_higlight(temp_vals[0], temp_vals[1], "delete"))
-                        temp_return_string2 += "\n                <td style=\"border: 1px solid black\">{}</td>".format(diff_html_higlight(temp_vals[0], temp_vals[1], "insert"))
-                        temp_return_string2 += "\n            </tr>"
-                        temp_return_string += temp_return_string2
-                        change_counter += 1
-            except:
-                pass
-
-            if change_counter > 0:
-                return_string += temp_return_string
-                return_string += """
-            </table>
-            </ul>
-            </div>
-        </div>
-"""
+#            temp_return_string = tableformat.format(testname,  testname)
+#            temp_return_string += "\n            <tr style=\"border: 1px solid black\">"
+#            temp_return_string += "\n            <th style=\"border: 1px solid black\">Key</th>"
+#            change_counter = 0
+#
+#            try:
+#                for env_set in global_db.db["env_sets"][testname]:
+#                    users = ""
+#                    for user in env_set['users']:
+#                        if user['commit'].label == interesting_event.old.label or user['commit'].label == interesting_event.new.label:
+#                            if len(users) > 0:
+#                                users += "<br/>"
+#
+#                            users += "{}.{}#{}".format(user['log_folder'], user['commit'].label, user['run'])
+#                            temp_return_string += "\n            <th style=\"border: 1px solid black\">{}</th>".format(users)
+#
+#                for key in global_db.db["env_diff_keys"][testname]:
+#                    temp_return_string2 = "\n            <tr style=\"border: 1px solid black\">"
+#                    temp_return_string2 += "\n                <td style=\"border: 1px solid black\">{}</td>".format(key)
+#                    temp_vals = []
+#                    for env_set in global_db.db["env_sets"][testname]:
+#                        for user in env_set['users']:
+#                            if user['commit'].label == interesting_event.old.label or user['commit'].label == interesting_event.new.label:
+#                                if key in dict(env_set['set']):
+#                                    env_val = dict(env_set['set'])[key]
+#                                else:
+#                                    env_val = "MISSING"
+#                                temp_vals.append(str(env_val))
+#
+#                    if len(temp_vals) == 2 and temp_vals[0] != temp_vals[1]:
+#                        temp_return_string2 += "\n                <td style=\"border: 1px solid black\">{}</td>".format(diff_html_higlight(temp_vals[0], temp_vals[1], "delete"))
+#                        temp_return_string2 += "\n                <td style=\"border: 1px solid black\">{}</td>".format(diff_html_higlight(temp_vals[0], temp_vals[1], "insert"))
+#                        temp_return_string2 += "\n            </tr>"
+#                        temp_return_string += temp_return_string2
+#                        change_counter += 1
+#            except:
+#                pass
+#
+#            if change_counter > 0:
+#                return_string += temp_return_string
+#                return_string += """
+#            </table>
+#            </ul>
+#            </div>
+#        </div>
+#"""
 
 ####################################
 
             for j in events[interesting_event][test][testname]:
 
+                if test != "perf":
+                    return_string += "\t\t\t\t\t<p class=\"testparagraph\">"
+
                 for e in events[interesting_event][test][testname][j]:
                     if not isinstance(e, EventRenderingChange):
                         if test == "perf":
                             return_string += "\t\t\t\t\t<div class=\"testonelinerparagraph\">"
-                            return_string += html.escape(e.short_desc)
-                            return_string += "<span id=\"{}\" class=\"tooltipchart\"></span></div>".format(re.sub('[^0-9a-zA-Z]+', '_', testname))
+
+                            if e.subresult_key == None:
+                                thisname = e.full_name
+                            else:
+                                thisname = e.subresult_key
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                        elif test == "unit test":
+                            if e.subresult_key == None:
+                                thisname = e.full_name
+                            else:
+                                thisname = e.subresult_key
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+
+#                            return_string += html.escape(e.short_desc)
+#                            return_string += "<br>"
+                            return_string += "old status: "
+                            for run in range(len(e.old_status.results)):
+                                return_string += " {}".format(e.old_status.results[run][1])
+                            return_string += "<br>new status: "
+                            for run in range(len(e.new_status.results)):
+                                return_string += " {}".format(e.new_status.results[run][1])
+                            return_string += "<br>"
+                        elif test == "variance":
+                            if e.subresult_key == None:
+                                thisname = e.full_name
+                            else:
+                                thisname = e.subresult_key
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "<br>"
+                            return_string += "results from runs ({}): ".format(str(len(e.result.results)))
+                            for run in range(len(e.result.results)):
+                                return_string += " {}".format(e.result.results[run][1])
                         else:
-                            return_string += "\t\t\t\t\t<p class=\"testparagraph\">"
                             return_string += html.escape(e.short_desc)
-                            return_string += "</p>"
                     else:
                         # Reconstruct image path
                         new = e.result.average_image_file
@@ -374,6 +423,9 @@ def event_result(global_db, eventpath):
                         return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'New image');\">\n".format(new_e, new_e)
                         return_string += "\t\t\t\t\t</p>"
                     return_string += "\n\t\t\t\t\t<br>\n"
+
+                if test != "perf":
+                    return_string += "\t\t\t\t\t</p>"
 
     return_string += return_string_footer
     return str(return_string)

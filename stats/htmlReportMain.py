@@ -127,6 +127,8 @@ head, body, html {
 		document.getElementById("playground").innerHTML='<object class="inner" type="text/html" data="'+location.origin+'/'+cell+'.html"></object>';
 		return false;
     }
+    
+    clicky('events');
 </script>
 """
 

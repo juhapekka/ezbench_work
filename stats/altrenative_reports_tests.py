@@ -208,6 +208,7 @@ def env_detail(global_db, testname):
             users += "{}.{}#{}".format(user['log_folder'], user['commit'].label, user['run'])
         returnstr += "\n            <th style=\"border: 1px solid black\">{}</th>".format(users)
 
+    changes = 0
     for key in global_db.db["env_diff_keys"][testname]:
         returnstr += "\n            <tr style=\"border: 1px solid black\">"
         returnstr += "\n                <td style=\"border: 1px solid black\">{}</td>".format(key)
@@ -223,6 +224,7 @@ def env_detail(global_db, testname):
                 css_class = "background:#EEEEEE;border: 1px solid black"
             prev = env_val
             returnstr += "\n                <td style=\"{}\">{}</td>".format(css_class, env_val)
+            changes += 1
         returnstr += "\n            </tr>"
 
     returnstr += """
@@ -231,7 +233,10 @@ def env_detail(global_db, testname):
             </div>
         </div>
 """
-    return returnstr
+    if changes > 0:
+        return returnstr
+    else:
+        return str("")
 
 def onetest(global_db, testname):
     if str("test_"+testname) in global_db.served_htmls_dict:
