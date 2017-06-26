@@ -39,6 +39,9 @@ ezbench_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(ezbench_dir, 'python-modules'))
 sys.path.append(ezbench_dir)
 
+#characters we will not expect to see in test names when they're part of url
+singleevent_url_format = str("[_ <>@]")
+
 from utils.env_dump.env_dump_parser import *
 from ezbench.smartezbench import *
 from ezbench.report import *
@@ -234,6 +237,98 @@ def buildenvchangestable(global_db, interesting_event, testname, collapsable = T
     else:
         return str("")
 
+
+"""
+
+google.charts.load('current', {packages: ['corechart', 'bar']});
+google.charts.setOnLoadCallback(drawMaterial);
+
+function drawMaterial() {
+      var data = new google.visualization.DataTable();
+      data.addColumn('timeofday', 'Time of Day');
+      data.addColumn('number', 'Motivation Level');
+      data.addColumn('number', 'Energy Level');
+
+      data.addRows([
+        [{v: [8, 0, 0], f: '8 am'}, 1, .25],
+        [{v: [9, 0, 0], f: '9 am'}, 2, .5],
+        [{v: [10, 0, 0], f:'10 am'}, 3, 1],
+        [{v: [11, 0, 0], f: '11 am'}, 4, 2.25],
+        [{v: [12, 0, 0], f: '12 pm'}, 5, 2.25],
+        [{v: [13, 0, 0], f: '1 pm'}, 6, 3],
+        [{v: [14, 0, 0], f: '2 pm'}, 7, 4],
+        [{v: [15, 0, 0], f: '3 pm'}, 8, 5.25],
+        [{v: [16, 0, 0], f: '4 pm'}, 9, 7.5],
+        [{v: [17, 0, 0], f: '5 pm'}, 10, 10],
+      ]);
+
+      var options = {
+        title: 'Motivation and Energy Level Throughout the Day',
+        hAxis: {
+          title: 'Result',
+          viewWindow: {
+            min: [7, 30, 0],
+            max: [17, 30, 0]
+          }
+        },
+        vAxis: {
+          title: 'Count'
+        }
+      };
+
+      var materialChart = new google.charts.Bar(document.getElementById('chart_div'));
+      materialChart.draw(data, options);
+    }
+
+"""        
+def differentrunresulttable(testcontents):
+    barchart = """
+google.charts.load('current', {{packages: ['corechart', 'bar']}});
+google.charts.setOnLoadCallback(drawMaterial);
+
+function drawMaterial() {{
+      var data = new google.visualization.DataTable();
+
+        {}
+      var options = {{
+        title: 'Motivation and Energy Level Throughout the Day',
+        hAxis: {{
+          title: 'Result',
+          viewWindow: {{
+            min: [7, 30, 0],
+            max: [17, 30, 0]
+          }}
+        }},
+        vAxis: {{
+          title: 'Count'
+        }}
+      }};
+
+      var materialChart = new google.charts.Bar(document.getElementById('chart_div'));
+      materialChart.draw(data, options);
+    }}
+"""
+
+    return_string = """
+            <div class="list">
+            <ul>
+            <table style=\"font-family:arial;font-size: 12pt;border-collapse: collapse;\">"""
+    
+    lista = []
+    for runresult in testcontents.result.results:
+        lista.append(runresult[1])
+
+    dictResultCounts = {x:lista.count(x) for x in lista}
+    
+    datavariable = "    var data = google.visualization.arrayToDataTable([\n         ['Result', 'Count', { role: 'style' }],\n"
+    for i in dictResultCounts.keys():
+        datavariable += "         [\"{}\", {}, '#b87333'],\n".format(str(i), str(dictResultCounts[i]) )
+    datavariable += "      ]);"
+    
+    return_string += "<div id=\"chart_div\"></div>"    
+    return (return_string, barchart.format(datavariable))
+
+
 #######################
 ## single event page
 #######################
@@ -280,9 +375,8 @@ def eventpage(global_db,  eventname):
 
     return_string_footer = """
         </body>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
         <script type="text/javascript">
-        </script>
-</html>
 """
     arrivals = re.split("[ _.]+", eventname)
     if arrivals[0] == "singleevent":
@@ -319,7 +413,7 @@ def eventpage(global_db,  eventname):
                 else:
                     thisname = testname.subresult_key
 
-                if re.sub('[_ <>@]', '', thisname) == event_finder[1]:
+                if re.sub(singleevent_url_format, '', thisname) == event_finder[1]:
                     realname = thisname
                     testcontents.append(testname)
                     break
@@ -331,5 +425,11 @@ def eventpage(global_db,  eventname):
     return_string += buildcommitinfotable(getattr(getattr(locals()["testname"], "commit_range"), "old"), getattr(getattr(locals()["testname"], "commit_range"), "new"))
     # Environment changes
     return_string += buildenvchangestable(global_db, interesting_event, realname,  False)
+    
+    if eventtype == "variance":
+        variancerstrings = differentrunresulttable(testcontents[0])
+        return_string += variancerstrings[0]
+        return_string_footer += variancerstrings[1]
 
-    return return_string+return_string_footer
+    return return_string+return_string_footer+"         </script>\n</html>"
+

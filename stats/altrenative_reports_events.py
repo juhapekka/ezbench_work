@@ -42,6 +42,8 @@ from utils.env_dump.env_dump_parser import *
 from ezbench.smartezbench import *
 from ezbench.report import *
 
+import altrenative_reports_singleevent
+
 #######################
 ## single event page
 #######################
@@ -376,13 +378,13 @@ def event_result(global_db, eventpath):
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
                         elif test == "unit test":
                             if e.subresult_key == None:
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
 
 #                            return_string += html.escape(e.short_desc)
 #                            return_string += "<br>"
@@ -398,7 +400,7 @@ def event_result(global_db, eventpath):
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
                             return_string += "<br>"
                             return_string += "results from runs ({}): ".format(str(len(e.result.results)))
                             for run in range(len(e.result.results)):
@@ -408,7 +410,7 @@ def event_result(global_db, eventpath):
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
                             return_string += "<br>"
                             
 #                            return_string += html.escape(e.short_desc)
