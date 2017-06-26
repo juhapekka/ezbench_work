@@ -123,7 +123,10 @@ def buildcommitinfotable(oldcommit,  newcommit):
     commit_infos = [("Title:", "title"), ("sha1:", "sha1"),  ("author:", "author"), ("author date:", "author_date"),
         ("signed-of-by:", "signed_of_by"), ("tested-by:", "tested_by"), ("commit date:", "commit_date"), ("commiter:", "commiter") ]
 
-    return_string = "<table style=\"font-family:arial;font-size: 12pt;border-collapse: collapse;\">"
+    return_string = """
+            <div class="list">
+            <ul>
+            <table style=\"font-family:arial;font-size: 12pt;border-collapse: collapse;\">"""
     return_string += "\n            <tr class=\"tablehelp\">"
     return_string += "\n            <th class=\"tablehelp\">Commit</th>"
     
@@ -157,9 +160,14 @@ def buildcommitinfotable(oldcommit,  newcommit):
 
         if writeout == True:
             return_string += temp_return_string
-    return_string += "</table>"
+    return_string += """
+            </table>
+            </ul>
+            </div>
+        </div>\n"""
 
-    return return_string
+
+    return "<h2>Commit information:</h2><br>" + return_string
 
 def buildenvchangestable(global_db, interesting_event, testname, collapsable = True):
 ####################################
@@ -218,7 +226,7 @@ def buildenvchangestable(global_db, interesting_event, testname, collapsable = T
         pass
 
     if change_counter > 0:
-        return temp_return_string+"""
+        return "<h2>Environment changes:</h2><br>" + temp_return_string+"""
             </table>
             </ul>
             </div>
@@ -317,7 +325,7 @@ def eventpage(global_db,  eventname):
                     break
 
     #start building the html
-    return_string += "<h1>"+ realname + "</h1>"
+    return_string += "<h1>"+ realname + "</h1><br>"
 
     # Commit informations
     return_string += buildcommitinfotable(getattr(getattr(locals()["testname"], "commit_range"), "old"), getattr(getattr(locals()["testname"], "commit_range"), "new"))
