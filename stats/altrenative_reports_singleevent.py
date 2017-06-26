@@ -314,7 +314,7 @@ def eventpage(global_db,  eventname):
                 if re.sub('[_ ]', '', thisname) == event_finder[1]:
                     realname = thisname
                     testcontents.append(testname)
-        break
+                    break
 
     #start building the html
     return_string += "<h1>"+ realname + "</h1>"
