@@ -319,7 +319,7 @@ def eventpage(global_db,  eventname):
                 else:
                     thisname = testname.subresult_key
 
-                if re.sub('[_ ]', '', thisname) == event_finder[1]:
+                if re.sub('[_ <>@]', '', thisname) == event_finder[1]:
                     realname = thisname
                     testcontents.append(testname)
                     break

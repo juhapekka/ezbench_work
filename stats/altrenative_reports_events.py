@@ -376,13 +376,13 @@ def event_result(global_db, eventpath):
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ ]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
                         elif test == "unit test":
                             if e.subresult_key == None:
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ ]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
 
 #                            return_string += html.escape(e.short_desc)
 #                            return_string += "<br>"
@@ -398,13 +398,20 @@ def event_result(global_db, eventpath):
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ ]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
                             return_string += "<br>"
                             return_string += "results from runs ({}): ".format(str(len(e.result.results)))
                             for run in range(len(e.result.results)):
                                 return_string += " {}".format(e.result.results[run][1])
                         else:
-                            return_string += html.escape(e.short_desc)
+                            if e.subresult_key == None:
+                                thisname = e.full_name
+                            else:
+                                thisname = e.subresult_key
+                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub('[_ <>@]', '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
+                            return_string += "<br>"
+                            
+#                            return_string += html.escape(e.short_desc)
                     else:
                         # Reconstruct image path
                         new = e.result.average_image_file
