@@ -370,7 +370,7 @@ def event_result(global_db, eventpath):
                 for e in events[interesting_event][test][testname][j]:
                     if not isinstance(e, EventRenderingChange):
                         if test == "perf":
-                            return_string += "\t\t\t\t\t<div class=\"testonelinerparagraph\">"
+#                            return_string += "\t\t\t\t\t<div class=\"testonelinerparagraph\">"
 
                             if e.subresult_key == None:
                                 thisname = e.full_name
