@@ -114,7 +114,7 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
             #
             try:
                 chooser = os.path.basename(self.path.split("_")[0])
-                listed = ["result", "trends.html", "events.html" ]
+                listed = ["result", "trends.html", "events.html",  "singleevent" ]
                 return_html = {
                     "": lambda x: global_db.global_html,
                     "/": lambda x: global_db.global_html,
