@@ -168,12 +168,9 @@ def buildcommitinfotable(oldcommit,  newcommit):
             </ul>
             </div>
         </div>\n"""
-
-
     return "<h2>Commit information:</h2><br>" + return_string
 
 def buildenvchangestable(global_db, interesting_event, testname, collapsable = True):
-####################################
     if collapsable is True:
         tableformat = """            <input id="togList{}" type="checkbox">
                 <label for="togList{}">
@@ -237,61 +234,17 @@ def buildenvchangestable(global_db, interesting_event, testname, collapsable = T
     else:
         return str("")
 
-
-"""
-
-google.charts.load('current', {packages: ['corechart', 'bar']});
-google.charts.setOnLoadCallback(drawMaterial);
-
-function drawMaterial() {
-      var data = new google.visualization.DataTable();
-      data.addColumn('timeofday', 'Time of Day');
-      data.addColumn('number', 'Motivation Level');
-      data.addColumn('number', 'Energy Level');
-
-      data.addRows([
-        [{v: [8, 0, 0], f: '8 am'}, 1, .25],
-        [{v: [9, 0, 0], f: '9 am'}, 2, .5],
-        [{v: [10, 0, 0], f:'10 am'}, 3, 1],
-        [{v: [11, 0, 0], f: '11 am'}, 4, 2.25],
-        [{v: [12, 0, 0], f: '12 pm'}, 5, 2.25],
-        [{v: [13, 0, 0], f: '1 pm'}, 6, 3],
-        [{v: [14, 0, 0], f: '2 pm'}, 7, 4],
-        [{v: [15, 0, 0], f: '3 pm'}, 8, 5.25],
-        [{v: [16, 0, 0], f: '4 pm'}, 9, 7.5],
-        [{v: [17, 0, 0], f: '5 pm'}, 10, 10],
-      ]);
-
-      var options = {
-        title: 'Motivation and Energy Level Throughout the Day',
-        hAxis: {
-          title: 'Result',
-          viewWindow: {
-            min: [7, 30, 0],
-            max: [17, 30, 0]
-          }
-        },
-        vAxis: {
-          title: 'Count'
-        }
-      };
-
-      var materialChart = new google.charts.Bar(document.getElementById('chart_div'));
-      materialChart.draw(data, options);
-    }
-
-"""        
 def differentrunresulttable(testcontents):
     barchart = """
 google.charts.load('current', {{packages: ['corechart', 'bar']}});
 google.charts.setOnLoadCallback(drawMaterial);
 
 function drawMaterial() {{
-      var data = new google.visualization.DataTable();
+    var data = new google.visualization.DataTable();
 
-        {}
-      var options = {{
-        title: 'Motivation and Energy Level Throughout the Day',
+    {}
+    var options = {{
+        title: 'Run results bar chart or something..',
         hAxis: {{
           title: 'Result',
           viewWindow: {{
@@ -302,30 +255,48 @@ function drawMaterial() {{
         vAxis: {{
           title: 'Count'
         }}
-      }};
+    }};
 
-      var materialChart = new google.charts.Bar(document.getElementById('chart_div'));
-      materialChart.draw(data, options);
-    }}
+    var materialChart = new google.charts.Bar(document.getElementById('chart_div'));
+    materialChart.draw(data, options);
+}}
 """
 
-    return_string = """
-            <div class="list">
+    return_string = ""
+    """
+        <div class="list">
             <ul>
             <table style=\"font-family:arial;font-size: 12pt;border-collapse: collapse;\">"""
     
     lista = []
-    for runresult in testcontents.result.results:
+    tablehtml1 =  """        <div class="list">
+            <table style="font-family:arial;font-size: 12pt;border-collapse: collapse;table-layout: fixed;width: 100%;">
+                <tr class="tablehelp">
+                    <th class="tablehelp">Run</th>"""
+
+    tablehtml2 = """                <tr class="tablehelp">
+                    <th class="tablehelp">Result</th>"""
+
+    for i in range(0, len(testcontents.result.results)):
+        runresult = testcontents.result.results[i]
         lista.append(runresult[1])
+        tablehtml1 += "\n                    <th class=\"tablehelp\">{}</th>".format(i)
+        tablehtml2 += "\n                    <td class=\"tablehelp\" style=\"text-align:center;\">{}</td>".format(runresult[1])
+
+    tablehtml1 += "\n                </tr>\n"
+    tablehtml2 += """\n                </tr>
+            </table>
+        </div>\n"""
 
     dictResultCounts = {x:lista.count(x) for x in lista}
-    
-    datavariable = "    var data = google.visualization.arrayToDataTable([\n         ['Result', 'Count', { role: 'style' }],\n"
+
+    datavariable = "var data = google.visualization.arrayToDataTable([\n         ['Result', 'Count', { role: 'style' }],\n"
     for i in dictResultCounts.keys():
         datavariable += "         [\"{}\", {}, '#b87333'],\n".format(str(i), str(dictResultCounts[i]) )
     datavariable += "      ]);"
-    
-    return_string += "<div id=\"chart_div\"></div>"    
+
+    return_string += "        <div id=\"chart_div\">\n        </div>\n"
+    return_string += tablehtml1+tablehtml2
     return (return_string, barchart.format(datavariable))
 
 
