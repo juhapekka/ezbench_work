@@ -253,7 +253,8 @@ function drawMaterial() {{
           }}
         }},
         vAxis: {{
-          title: 'Count'
+          title: 'Count',
+          format: '#'
         }}
     }};
 

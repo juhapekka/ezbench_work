@@ -388,23 +388,24 @@ def event_result(global_db, eventpath):
 
 #                            return_string += html.escape(e.short_desc)
 #                            return_string += "<br>"
-                            return_string += "old status: "
-                            for run in range(len(e.old_status.results)):
-                                return_string += " {}".format(e.old_status.results[run][1])
-                            return_string += "<br>new status: "
-                            for run in range(len(e.new_status.results)):
-                                return_string += " {}".format(e.new_status.results[run][1])
-                            return_string += "<br>"
+
+#                            return_string += "old status: "
+#                            for run in range(len(e.old_status.results)):
+#                                return_string += " {}".format(e.old_status.results[run][1])
+#                            return_string += "<br>new status: "
+#                            for run in range(len(e.new_status.results)):
+#                                return_string += " {}".format(e.new_status.results[run][1])
+#                            return_string += "<br>"
                         elif test == "variance":
                             if e.subresult_key == None:
                                 thisname = e.full_name
                             else:
                                 thisname = e.subresult_key
                             return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
-                            return_string += "<br>"
-                            return_string += "results from runs ({}): ".format(str(len(e.result.results)))
-                            for run in range(len(e.result.results)):
-                                return_string += " {}".format(e.result.results[run][1])
+#                            return_string += "<br>"
+#                            return_string += "results from runs ({}): ".format(str(len(e.result.results)))
+#                            for run in range(len(e.result.results)):
+#                                return_string += " {}".format(e.result.results[run][1])
                         else:
                             if e.subresult_key == None:
                                 thisname = e.full_name
