@@ -335,7 +335,6 @@ def differentrunresulttable_unit(testcontents, report):
         </div>\n"""
 
     return_string = tablehtml1+tablehtml2+tablehtml3
-
     return (str("        <h2>Run results:</h2><br>\n" + return_string), "")
 
 
@@ -412,7 +411,6 @@ def differentrunresulttable_perf(global_db, testcontents, testname, report):
 
         return_string_footer = return_string_footer+graph_builder.format(datestr)
     return_string_footer = return_string_footer+graph_builder_finish
-
     return (str("        <h2>Perf test history:</h2><br>\n" + return_string), return_string_footer)
 
 
@@ -487,7 +485,11 @@ def eventpage(global_db,  eventname):
 """
     arrivals = re.split("[ _.]+", eventname)
     if arrivals[0] == "singleevent":
-        event_finder = (arrivals[1], arrivals[2],  arrivals[3])
+        # 1 = hash
+        # 2 = fullname
+        # 3 = subname
+        # 4 = type
+        event_finder = (arrivals[1], arrivals[2], arrivals[3],  arrivals[4])
     else:
         return_string += "<h1>Unecpected error, unknown event!</h1></body>"
         return str(return_string)
@@ -508,21 +510,23 @@ def eventpage(global_db,  eventname):
     #
     testcontents = []
     realname = ""
-    eventtype = arrivals[3]
+    eventtype = event_finder[3]
     thisReport = ""
+    testnamefullname = ""
+    testnamesubname = ""
+
     if eventtype == "unit":
         eventtype = "unit test"
 
     for setname in events[interesting_event][eventtype]:
         for report in events[interesting_event][eventtype][setname]:
             for testname in events[interesting_event][eventtype][setname][report]:
-                if testname.subresult_key == None:
-                    thisname = testname.full_name
-                else:
-                    thisname = testname.subresult_key
+                testnamefullname = str(testname.full_name)
+                testnamesubname = str(testname.subresult_key)
 
-                if re.sub(singleevent_url_format, '', thisname) == event_finder[1]:
-                    realname = thisname
+                if re.sub(singleevent_url_format, '', testnamefullname) == event_finder[1] and re.sub(singleevent_url_format, '', testnamesubname) == event_finder[2]:
+                    realname = testnamefullname
+
                     thisReport = report
                     testcontents.append(testname)
                     break
@@ -535,6 +539,7 @@ def eventpage(global_db,  eventname):
     # Environment changes
     return_string += buildenvchangestable(global_db, interesting_event, realname,  False)
     
+    #particular test related additions.
     if eventtype == "variance":
         variancerstrings = differentrunresulttable_variance(testcontents[0], thisReport)
         return_string += variancerstrings[0]

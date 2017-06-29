@@ -68,6 +68,18 @@ def diff_html_higlight(str1,  str2,  rInclude="insert delete"):
             raise(RuntimeError, "unexpected opcode")
     return ''.join(output)
 
+##
+## Event Url generator helper for single event pages
+def single_event_url(event, event_finder, test):
+    thisname1 = re.sub(altrenative_reports_singleevent.singleevent_url_format, '', str(event.full_name))
+    thisname2 = re.sub(altrenative_reports_singleevent.singleevent_url_format, '', str(event.subresult_key))
+
+    formatstring = "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a><br>\n"
+    return_string = formatstring.format(str("singleevent_"+event_finder+"_"+thisname1+"_"+thisname2+"_"+test+".html"), str(event.subresult_key),  html.escape(event.short_desc))
+
+    return return_string
+
+
 def event_result(global_db, eventpath):
     return_string = """<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -197,7 +209,6 @@ def event_result(global_db, eventpath):
     # got the event, start making the html report
     #
     return_string += "<h1>{} <a href=\"{}\" onclick=\"window.open('{}', '{}')\";>&#10697;</a></h1>\n".format(str(interesting_event), eventpath, eventpath, str(interesting_event))
-
     subentries = "\n\t\t\t<ul class=\"normalparagraph\">\n"
 
     report = global_db.db["reports"][0].name
@@ -228,43 +239,20 @@ def event_result(global_db, eventpath):
                 return_string += "\t\t\t\t\t<p class=\"testparagraph\">"
 
                 for e in events[interesting_event][test][testname][j]:
-                    if not isinstance(e, EventRenderingChange):
-                        if test == "perf":
-
-                            if e.subresult_key == None:
-                                thisname = e.full_name
-                            else:
-                                thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
-                        elif test == "unit test":
-                            if e.subresult_key == None:
-                                thisname = e.full_name
-                            else:
-                                thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
-
-                        elif test == "variance":
-                            if e.subresult_key == None:
-                                thisname = e.full_name
-                            else:
-                                thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
-                        else:
-                            if e.subresult_key == None:
-                                thisname = e.full_name
-                            else:
-                                thisname = e.subresult_key
-                            return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
-                            return_string += "<br>"
-                    else:
-                        # Reconstruct image path
-                        if e.subresult_key == None:
-                            thisname = e.full_name
-                        else:
-                            thisname = e.subresult_key
-                        return_string += "\t\t\t\t<a href=\"#\" onclick=\"window.open('{}', '{}')\";>{}</a>\n".format(str("singleevent_"+event_finder+"_"+re.sub(altrenative_reports_singleevent.singleevent_url_format, '', thisname)+"_"+test+".html"), str(e.subresult_key),  html.escape(e.short_desc))
-
-                    return_string += "\n\t\t\t\t\t<br>\n"
+                    return_string += single_event_url(e, event_finder, test)
+#                    if not isinstance(e, EventRenderingChange):
+#                        if test == "perf":
+#                            return_string += single_event_url(e, event_finder, test)
+#                        elif test == "unit test":
+#                            return_string += single_event_url(e, event_finder, test)
+#                        elif test == "variance":
+#                            return_string += single_event_url(e, event_finder, test)
+#                        else:
+#                            return_string += single_event_url(e, event_finder, test)
+#                            return_string += "<br>"
+#                    else:
+#                            return_string += single_event_url(e, event_finder, test)
+                return_string += "\n\t\t\t\t\t</p>\n"
 
     return_string += return_string_footer
     return str(return_string)
