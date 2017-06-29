@@ -40,7 +40,7 @@ sys.path.append(os.path.join(ezbench_dir, 'python-modules'))
 sys.path.append(ezbench_dir)
 
 #characters we will not expect to see in test names when they're part of url
-singleevent_url_format = str("[_ <>@]")
+singleevent_url_format = str("[\_\ \<\>\@\.\-\%\/\:]")
 
 from utils.env_dump.env_dump_parser import *
 from ezbench.smartezbench import *
@@ -234,33 +234,33 @@ def buildenvchangestable(global_db, interesting_event, testname, collapsable = T
     else:
         return str("")
 
-def differentrunresulttable(testcontents):
+def differentrunresulttable_variance(testcontents, report):
     barchart = """
-google.charts.load('current', {{packages: ['corechart', 'bar']}});
-google.charts.setOnLoadCallback(drawMaterial);
+    google.charts.load('current', {{packages: ['corechart', 'bar']}});
+    google.charts.setOnLoadCallback(drawMaterial);
 
-function drawMaterial() {{
-    var data = new google.visualization.DataTable();
+    function drawMaterial() {{
+        var data = new google.visualization.DataTable();
 
-    {}
-    var options = {{
-        title: 'Run results bar chart or something..',
-        hAxis: {{
-          title: 'Result',
-          viewWindow: {{
-            min: [7, 30, 0],
-            max: [17, 30, 0]
-          }}
-        }},
-        vAxis: {{
-          title: 'Count',
-          format: '#'
-        }}
-    }};
+        {}
 
-    var materialChart = new google.charts.Bar(document.getElementById('chart_div'));
-    materialChart.draw(data, options);
-}}
+        var options = {{
+            title: 'Run results bar chart or something..',
+            hAxis: {{
+              title: 'Result',
+              viewWindow: {{
+                min: [7, 30, 0],
+                max: [17, 30, 0]
+              }}
+            }},
+            vAxis: {{
+              title: 'Count'
+            }}
+        }};
+
+        var materialChart = new google.charts.Bar(document.getElementById('chart_div'));
+        materialChart.draw(data, options);
+    }}
 """
 
     return_string = ""
@@ -298,8 +298,143 @@ function drawMaterial() {{
 
     return_string += "        <div id=\"chart_div\">\n        </div>\n"
     return_string += tablehtml1+tablehtml2
-    return (return_string, barchart.format(datavariable))
+    return (str("        <h2>Run results:</h2><br>\n" + return_string), barchart.format(datavariable))
 
+
+def differentrunresulttable_unit(testcontents, report):
+    tablehtml1 =  """        <div class="list">
+            <table style="font-family:arial;font-size: 12pt;border-collapse: collapse;table-layout: fixed;width: 100%;">
+                <tr class="tablehelp">
+                    <th class="tablehelp">Run</th>"""
+
+    tablehtml2 = """                <tr class="tablehelp">
+                    <th class="tablehelp">Old result</th>"""
+
+    tablehtml3 = """                <tr class="tablehelp">
+                    <th class="tablehelp">New result</th>"""
+
+    for i in range(0, max(len(testcontents.new_result.results),  len(testcontents.old_result.results))):
+        if i < len(testcontents.old_result.results):
+            old_runresult = testcontents.old_result.results[i][1]
+        else:
+            old_runresult = ""
+
+        if i < len(testcontents.new_result.results):
+            new_runresult = testcontents.new_result.results[i][1]
+        else:
+            new_runresult = ""
+
+        tablehtml1 += "\n                    <th class=\"tablehelp\">{}</th>".format(i)
+        tablehtml2 += "\n                    <td class=\"tablehelp\" style=\"text-align:center;\">{}</td>".format(old_runresult)
+        tablehtml3 += "\n                    <td class=\"tablehelp\" style=\"text-align:center;\">{}</td>".format(new_runresult)
+
+    tablehtml1 += "\n                </tr>\n"
+    tablehtml2 += "\n                </tr>\n"
+    tablehtml3 += """\n                </tr>
+            </table>
+        </div>\n"""
+
+    return_string = tablehtml1+tablehtml2+tablehtml3
+
+    return (str("        <h2>Run results:</h2><br>\n" + return_string), "")
+
+
+def differentrunresulttable_perf(global_db, testcontents, testname, report):
+    return_string_footer = """
+            google.charts.load('current', {'packages':['corechart', 'table']});
+            google.charts.setOnLoadCallback(drawchart);
+
+            function datesort(elem1, elem2)
+            {
+                if (elem1[0] > elem2[0]) return 1;
+                if (elem1[0] < elem2[0]) return -1;
+                return 0;
+            }
+
+            function drawchart()
+            {
+                var chart;
+                var data;
+                var originaldata;
+
+                var options = {
+                    hAxis: { title: '\% of target', textPosition: 'in' },
+                    vAxis: { textPosition: 'in' },
+                    chartArea: { left: 0, right: 0, top: 0, bottom: 0 },
+                    axisTitlesPosition: 'in',
+                    pointSize: 7,
+                    dataOpacity: 0.3,
+                    colors: ['#a52714'],
+                    series: {
+                        0:{visibleInLegend: false},
+                    }
+                };
+"""
+
+    graph_builder = """
+            data = new parent.parent.google.visualization.DataTable();
+            data.addColumn('datetime', 'X');
+            data.addColumn('number', '\% of target');
+
+            originaldata = [{}];
+            originaldata.sort(datesort);
+            data.addRows(originaldata);
+
+            chart = new parent.parent.google.visualization.LineChart(document.getElementById("chart_div"));
+            chart.draw(data, options);"""
+
+    graph_builder_finish = """
+            }
+"""
+
+    return_string = ""
+    return_string += "        <div id=\"chart_div\">\n        </div>\n"
+
+    testdict = {}
+    for commit in global_db.db["commits"]:
+        if testname in global_db.db["commits"][commit]["reports"][report]:
+            result = global_db.db["commits"][commit]["reports"][report][str(testname)]
+            if re.sub('[^0-9a-zA-Z]+', '_', testname) not in testdict:
+                testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)] = ["[{}, {}]".format(str(result.commit.commit_date.strftime('new Date(%Y, %m, %d, %H, %M, %S)')),  str(result.diff_target))]
+            else:
+                lista = testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)]
+                lista.append("[{}, {}]".format(str(result.commit.commit_date.strftime('new Date(%Y, %m, %d, %H, %M, %S)')),  str(result.diff_target)))
+                testdict[re.sub('[^0-9a-zA-Z]+', '_', testname)] = lista
+
+    for key in testdict:
+        datestr = ""
+        commastr = ""
+        lista = testdict[key]
+        for item in lista:
+            datestr = datestr+commastr
+            commastr = ", "
+            datestr = datestr+item
+
+        return_string_footer = return_string_footer+graph_builder.format(datestr)
+    return_string_footer = return_string_footer+graph_builder_finish
+
+    return (str("        <h2>Perf test history:</h2><br>\n" + return_string), return_string_footer)
+
+
+def differentrunresulttable_rendering(global_db, testcontents, testname, report):
+
+    new = testcontents.result.average_image_file
+    old = new.replace(testcontents.commit_range.new.sha1, testcontents.commit_range.old.sha1)
+    diff = '{}_compare_{}'.format(new, os.path.split(old)[1])
+
+    new_e = "/image_{}".format(os.path.split(new)[1])
+    old_e = "/image_{}".format(os.path.split(old)[1])
+    diff_e = "/image_{}".format(os.path.split(diff)[1])
+
+    return_string = "\t\t\t\t\t<p class=\"testparagraph\">"
+    return_string += testcontents.short_desc
+    return_string += "\n"
+    return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'Old image');\">\n".format(old_e, old_e)
+    return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'Diff image');\">\n".format(diff_e, diff_e)
+    return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'New image');\">\n".format(new_e, new_e)
+    return_string += "\t\t\t\t\t</p>"
+
+    return(return_string, "")
 
 #######################
 ## single event page
@@ -374,6 +509,7 @@ def eventpage(global_db,  eventname):
     testcontents = []
     realname = ""
     eventtype = arrivals[3]
+    thisReport = ""
     if eventtype == "unit":
         eventtype = "unit test"
 
@@ -387,11 +523,12 @@ def eventpage(global_db,  eventname):
 
                 if re.sub(singleevent_url_format, '', thisname) == event_finder[1]:
                     realname = thisname
+                    thisReport = report
                     testcontents.append(testname)
                     break
 
     #start building the html
-    return_string += "<h1>"+ realname + "</h1><br>"
+    return_string += "<h1><b>"+ eventtype + ":</b> " + realname + "</h1><br>"
 
     # Commit informations
     return_string += buildcommitinfotable(getattr(getattr(locals()["testname"], "commit_range"), "old"), getattr(getattr(locals()["testname"], "commit_range"), "new"))
@@ -399,9 +536,24 @@ def eventpage(global_db,  eventname):
     return_string += buildenvchangestable(global_db, interesting_event, realname,  False)
     
     if eventtype == "variance":
-        variancerstrings = differentrunresulttable(testcontents[0])
+        variancerstrings = differentrunresulttable_variance(testcontents[0], thisReport)
         return_string += variancerstrings[0]
         return_string_footer += variancerstrings[1]
+
+    if eventtype == "unit test":
+        unitstrings = differentrunresulttable_unit(testcontents[0], thisReport)
+        return_string += unitstrings[0]
+        return_string_footer += unitstrings[1]
+
+    if eventtype == "perf":
+        perfstrings = differentrunresulttable_perf(global_db, testcontents[0], realname, thisReport)
+        return_string += perfstrings[0]
+        return_string_footer += perfstrings[1]
+
+    if eventtype == "rendering":
+        renderingstrings = differentrunresulttable_rendering(global_db, testcontents[0], realname, thisReport)
+        return_string += renderingstrings[0]
+        return_string_footer += renderingstrings[1]
 
     return return_string+return_string_footer+"         </script>\n</html>"
 

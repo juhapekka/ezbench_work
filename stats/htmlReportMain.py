@@ -107,27 +107,27 @@ head, body, html {
 
 <body>
 <div class="container">
-  <div class="wrapper" id="menu">
-	<table width="100%">
-	  <tr>
-	  <td width="20%" class="tdwrapper" onclick="clicky('events')"><h2>Events</h2></td>
-<!---	  <td width="20%" class="tdwrapper" onclick="clicky('commits')"><h2>Commits</h2></td> --->
-	  <td width="20%" class="tdwrapper" onclick="clicky('trends')"><h2>Trends</h2></td>
-<!---	  <td width="20%" class="tdwrapper" onclick="clicky('detail')"><h2>Detail</h2></td> --->
-	  <td width="20%" class="tdwrapper" onclick="clicky('tests')"><h2>Tests</h2></td>
-	  </tr>  
-	</table>
-  </div>
-  <div id="playground" class="playground">
-  </div>
+    <div class="wrapper" id="menu">
+        <table width="100%">
+        <tr>
+            <td width="20%" class="tdwrapper" onclick="clicky('events')"><h2>Events</h2></td>
+<!---	    <td width="20%" class="tdwrapper" onclick="clicky('commits')"><h2>Commits</h2></td> --->
+            <td width="20%" class="tdwrapper" onclick="clicky('trends')"><h2>Trends</h2></td>
+<!---	    <td width="20%" class="tdwrapper" onclick="clicky('detail')"><h2>Detail</h2></td> --->
+            <td width="20%" class="tdwrapper" onclick="clicky('tests')"><h2>Tests</h2></td>
+        </tr>
+        </table>
+    </div>
+    <div id="playground" class="playground">
+    </div>
 </body>
 
 <script type="text/javascript">
     function clicky(cell) {
-		document.getElementById("playground").innerHTML='<object class="inner" type="text/html" data="'+location.origin+'/'+cell+'.html"></object>';
-		return false;
+        document.getElementById("playground").innerHTML='<object class="inner" type="text/html" data="'+location.origin+'/'+cell+'.html"></object>';
+        return false;
     }
-    
+
     clicky('events');
 </script>
 """
