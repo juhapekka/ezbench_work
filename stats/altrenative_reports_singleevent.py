@@ -457,9 +457,9 @@ def differentrunresulttable_rendering(global_db, testcontents, testname, report)
             <tr class="tablehelp">
                     <th class="tablehelp">{}</th>"""
     return_string += tablehtmlformat.format(testcontents.short_desc)
-    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'Old image');\"></img></td>".format(old_e, old_e)
-    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'Diff image');\"></img></td>".format(diff_e, diff_e)
-    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'New image');\"></img></td>".format(new_e, new_e)
+    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" style=\"width:100%;\" onclick=\"window.open('{}', 'Old image');\"></img></td>".format(old_e, old_e)
+    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" style=\"width:100%;\" onclick=\"window.open('{}', 'Diff image');\"></img></td>".format(diff_e, diff_e)
+    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" style=\"width:100%;\" onclick=\"window.open('{}', 'New image');\"></img></td>".format(new_e, new_e)
     return_string += """\n                </tr>
             </table>
         </div>\n"""
