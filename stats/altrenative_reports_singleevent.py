@@ -423,7 +423,6 @@ def differentrunresulttable_perf(global_db, testcontents, testname, report):
 
     for i in range(0, len(result.runs)):
         runresult = result.runs[i].result()
-#        lista.append(runresult[1])
         tablehtml1 += "\n                    <th class=\"tablehelp\">{}</th>".format(i)
         tablehtml2 += "\n                    <td class=\"tablehelp\" style=\"text-align:center;\">{}</td>".format(str(runresult))
 
@@ -432,8 +431,7 @@ def differentrunresulttable_perf(global_db, testcontents, testname, report):
             </table>
         </div>\n"""
 
-#    result.runs[0].result()
-    return_string += tablehtml1 + tablehtml2
+    return_string += str("        <h2>Run results:</h2><br>\n" + tablehtml1 + tablehtml2)
     return (str("        <h2>Perf test history:</h2><br>\n" + return_string), return_string_footer)
 
 
@@ -457,7 +455,7 @@ def differentrunresulttable_rendering(global_db, testcontents, testname, report)
     tablehtmlformat =  """        <div class="list">
         <table style="font-family:arial;font-size: 12pt;border-collapse: collapse;table-layout: fixed;width: 100%;">
             <tr class="tablehelp">
-                    <th class="tablehelp">{]</th>"""
+                    <th class="tablehelp">{}</th>"""
     return_string += tablehtmlformat.format(testcontents.short_desc)
     return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'Old image');\"></img></td>".format(old_e, old_e)
     return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'Diff image');\"></img></td>".format(diff_e, diff_e)
