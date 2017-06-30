@@ -444,14 +444,6 @@ def differentrunresulttable_rendering(global_db, testcontents, testname, report)
     old_e = "/image_{}".format(os.path.split(old)[1])
     diff_e = "/image_{}".format(os.path.split(diff)[1])
 
-    return_string = "\t\t\t\t\t<p class=\"testparagraph\">"
-    return_string += testcontents.short_desc
-    return_string += "\n"
-    return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'Old image');\">\n".format(old_e, old_e)
-    return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'Diff image');\">\n".format(diff_e, diff_e)
-    return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'New image');\">\n".format(new_e, new_e)
-    return_string += "\t\t\t\t\t</p>"
-
     tablehtmlformat =  """        <div class="list">
         <table style="font-family:arial;font-size: 12pt;border-collapse: collapse;table-layout: fixed;width: 100%;">
             <tr class="tablehelp">
