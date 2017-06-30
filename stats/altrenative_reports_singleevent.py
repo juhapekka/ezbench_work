@@ -411,11 +411,33 @@ def differentrunresulttable_perf(global_db, testcontents, testname, report):
 
         return_string_footer = return_string_footer+graph_builder.format(datestr)
     return_string_footer = return_string_footer+graph_builder_finish
+
+
+    tablehtml1 =  """        <div class="list">
+            <table style="font-family:arial;font-size: 12pt;border-collapse: collapse;table-layout: fixed;width: 100%;">
+                <tr class="tablehelp">
+                    <th class="tablehelp">Run</th>"""
+
+    tablehtml2 = """                <tr class="tablehelp">
+                    <th class="tablehelp">Result</th>"""
+
+    for i in range(0, len(result.runs)):
+        runresult = result.runs[i].result()
+#        lista.append(runresult[1])
+        tablehtml1 += "\n                    <th class=\"tablehelp\">{}</th>".format(i)
+        tablehtml2 += "\n                    <td class=\"tablehelp\" style=\"text-align:center;\">{}</td>".format(str(runresult))
+
+    tablehtml1 += "\n                </tr>\n"
+    tablehtml2 += """\n                </tr>
+            </table>
+        </div>\n"""
+
+#    result.runs[0].result()
+    return_string += tablehtml1 + tablehtml2
     return (str("        <h2>Perf test history:</h2><br>\n" + return_string), return_string_footer)
 
 
 def differentrunresulttable_rendering(global_db, testcontents, testname, report):
-
     new = testcontents.result.average_image_file
     old = new.replace(testcontents.commit_range.new.sha1, testcontents.commit_range.old.sha1)
     diff = '{}_compare_{}'.format(new, os.path.split(old)[1])
@@ -432,6 +454,17 @@ def differentrunresulttable_rendering(global_db, testcontents, testname, report)
     return_string += "\t\t\t\t\t\t<img src=\"{}\" style=\"width:20%;\" onclick=\"window.open('{}', 'New image');\">\n".format(new_e, new_e)
     return_string += "\t\t\t\t\t</p>"
 
+    tablehtmlformat =  """        <div class="list">
+        <table style="font-family:arial;font-size: 12pt;border-collapse: collapse;table-layout: fixed;width: 100%;">
+            <tr class="tablehelp">
+                    <th class="tablehelp">{]</th>"""
+    return_string += tablehtmlformat.format(testcontents.short_desc)
+    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'Old image');\"></img></td>".format(old_e, old_e)
+    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'Diff image');\"></img></td>".format(diff_e, diff_e)
+    return_string += "\n                    <td class=\"tablehelp\"><img src=\"{}\" onclick=\"window.open('{}', 'New image');\"></img></td>".format(new_e, new_e)
+    return_string += """\n                </tr>
+            </table>
+        </div>\n"""
     return(return_string, "")
 
 #######################
